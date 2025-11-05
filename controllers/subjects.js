@@ -98,6 +98,28 @@ router.put("/:subjectId", verifyToken, async (req, res) => {
   }
 });
 
+// POST - Create a new note for a specific subject
+router.post("/:subjectId/notes", verifyToken, async (req, res) => {
+  try {
+    // Verify the subject exists and belongs to the user
+    const subject = await Subject.findById(req.params.subjectId);
+    if (!subject) {
+      return res.status(404).json({ error: "Subject not found" });
+    }
+    if (!subject.userId.equals(req.user._id)) {
+      return res.status(403).json({ error: "You're not allowed to do that!" });
+    }
+
+    // Create the note associated with the user and subject
+    req.body.userId = req.user._id;
+    req.body.subjectId = req.params.subjectId;
+    const note = await Note.create(req.body);
+    res.status(201).json(note);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // DELETE subject and all notes associated with it
 router.delete("/:subjectId", verifyToken, async (req, res) => {
   try {

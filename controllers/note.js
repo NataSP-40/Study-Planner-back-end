@@ -3,17 +3,19 @@ const router = express.Router();
 const Note = require("../models/note.js");
 const verifyToken = require("../middleware/verify-token.js");
 
-//create a new note
-router.post("/", verifyToken, async (req, res) => {
-  try {
-    // ensure the note is associated with the authenticated user
-    req.body.userId = req.user._id;
-    const note = await Note.create(req.body);
-    res.status(201).json(note);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
+//create a new note logic for a specific subject
+
+// router.post("/notes", verifyToken, async (req, res) => {
+//   try {
+//     // ensure the note is associated with the authenticated user
+//     req.body.userId = req.user._id;
+//     req.body.subjectId = req.params.subjectId; // associate note with subject
+//     const note = await Note.create(req.body); // create the note
+//     res.status(201).json(note);
+//   } catch (error) {
+//     res.status(500).json({ error: error.message });
+//   }
+// });
 
 //Get all notes for a specific subject
 router.get("/", verifyToken, async (req, res) => {
