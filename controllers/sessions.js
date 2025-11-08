@@ -14,28 +14,33 @@ router.get("/", verifyToken, async (req, res) => {
     const subjectId = req.query.subjectId; // Optional: filter by subject
 
     // Check if required dates are provided
-    if (!from || !to) {
-      return res.status(400).json({
-        error: "Both 'from' and 'to' dates are required",
-      });
-    }
+    // if (!from || !to) {
+    //   return res.status(400).json({
+    //     error: "Both 'from' and 'to' dates are required",
+    //   });
+    // }
 
     // Build the search criteria
-    // We want sessions that overlap with our date range
-    const searchCriteria = {
-      userId: req.user._id, // Only get sessions for the logged-in user
-      startAt: { $lte: new Date(to) }, // Session starts before or on the 'to' date
-      endAt: { $gte: new Date(from) }, // Session ends after or on the 'from' date
-    };
+    // We want sessions within our date range
+    // const searchCriteria = {
+    //   userId: req.user._id, // Only get sessions for the logged-in user
+    //   date: {
+    //     $gte: new Date(from), // Session date is on or after 'from'
+    //     $lte: new Date(to), // Session date is on or before 'to'
+    //   },
+    // };
 
-    // If a specific subject was requested, add it to the search
-    if (subjectId) {
-      searchCriteria.subjectId = subjectId;
-    }
+    // // If a specific subject was requested, add it to the search
+    // if (subjectId) {
+    //   searchCriteria.subjectId = subjectId;
+    // }
 
-    // Find all matching sessions and sort them by start time (earliest first)
-    const sessions = await StudySession.find(searchCriteria).sort({
-      startAt: 1,
+    // Find all matching sessions and sort them by date (earliest first)
+    const sessions = await StudySession.find({}).sort({
+      date: 1,
+      userId: 1,
+      subjectId: 1,
+      status: 1,
     });
 
     // Send back the sessions as JSON
@@ -50,26 +55,16 @@ router.get("/", verifyToken, async (req, res) => {
 router.post("/", verifyToken, async (req, res) => {
   try {
     // Get data from the request body
-    const { subjectId, startAt, endAt, title, notes } = req.body;
+    const { subjectId, date, title, notes } = req.body;
 
     // STEP 1: Check if required fields are provided
-    if (!subjectId || !startAt || !endAt) {
+    if (!subjectId || !date) {
       return res.status(400).json({
-        error: "subjectId, startAt, and endAt are required",
+        error: "subjectId and date are required",
       });
     }
 
-    // STEP 2: Check that end time is after start time
-    const startDate = new Date(startAt);
-    const endDate = new Date(endAt);
-
-    if (endDate <= startDate) {
-      return res.status(400).json({
-        error: "End time must be after start time",
-      });
-    }
-
-    // STEP 3: Check that the subject exists and belongs to the user
+    // STEP 2: Check that the subject exists and belongs to the user
     const subject = await Subject.findById(subjectId);
 
     if (!subject) {
@@ -83,12 +78,11 @@ router.post("/", verifyToken, async (req, res) => {
       });
     }
 
-    // STEP 4: Create the new session
+    // STEP 3: Create the new session
     const newSession = await StudySession.create({
       userId: req.user._id, // Link to the logged-in user
       subjectId: subjectId,
-      startAt: startDate,
-      endAt: endDate,
+      date: new Date(date),
       title: title || null, // Optional field
       notes: notes || null, // Optional field
       status: "planned", // New sessions start as "planned"
@@ -102,78 +96,62 @@ router.post("/", verifyToken, async (req, res) => {
   }
 });
 
-// PATCH /sessions/:id - Update an existing study session
-router.patch("/:id", verifyToken, async (req, res) => {
+// PUT /sessions/:id - Update an existing study session
+router.put("/:id", verifyToken, async (req, res) => {
   try {
-    // Get the session ID from the URL
-    const sessionId = req.params.id;
+    const { id } = req.params;
+    const { subjectId, date, title, notes, status } = req.body;
 
-    // STEP 1: Find the session
-    const session = await StudySession.findById(sessionId);
-
+    // STEP 1: Find the session AND ensure it belongs to the logged-in user
+    // (single query instead of find + manual ownership check)
+    const session = await StudySession.findOne({
+      _id: id,
+      userId: req.user._id,
+    });
     if (!session) {
       return res.status(404).json({ error: "Session not found" });
     }
 
-    // STEP 2: Security check - make sure this session belongs to the logged-in user
-    if (!session.userId.equals(req.user._id)) {
-      return res.status(403).json({
-        error: "You can only update your own sessions",
-      });
-    }
-
-    // STEP 3: Get the fields to update from the request body
-    const { subjectId, startAt, endAt, title, notes, status } = req.body;
-
-    // STEP 4: Validate the new dates if they're being changed
-    if (startAt || endAt) {
-      // Use new dates if provided, otherwise keep the old ones
-      const newStartDate = startAt ? new Date(startAt) : session.startAt;
-      const newEndDate = endAt ? new Date(endAt) : session.endAt;
-
-      // Make sure end is still after start
-      if (newEndDate <= newStartDate) {
-        return res.status(400).json({
-          error: "End time must be after start time",
-        });
-      }
-    }
-
-    // STEP 5: If changing the subject, make sure it exists and belongs to user
+    // STEP 2: If changing the subject, validate it belongs to the same user
     if (subjectId) {
-      const subject = await Subject.findById(subjectId);
-
+      const subject = await Subject.findOne({
+        _id: subjectId,
+        userId: req.user._id,
+      });
       if (!subject) {
-        return res.status(404).json({ error: "Subject not found" });
-      }
-
-      if (!subject.userId.equals(req.user._id)) {
-        return res.status(403).json({
-          error: "You can only use your own subjects",
-        });
+        return res
+          .status(404)
+          .json({ error: "Subject not found or not owned by user" });
       }
     }
 
-    // STEP 6: Build an object with only the fields that are being updated
+    // STEP 3: Build updates object only with provided fields
     const updates = {};
     if (subjectId) updates.subjectId = subjectId;
-    if (startAt) updates.startAt = new Date(startAt);
-    if (endAt) updates.endAt = new Date(endAt);
-    if (title !== undefined) updates.title = title || null;
-    if (notes !== undefined) updates.notes = notes || null;
-    if (status) updates.status = status;
+    if (date) updates.date = new Date(date);
+    if (title !== undefined) updates.title = title || null; // allow clearing with empty string
+    if (notes !== undefined) updates.notes = notes || null; // allow clearing
+    if (status) updates.status = status; // must be one of enum values
 
-    // STEP 7: Update the session in the database
-    const updatedSession = await StudySession.findByIdAndUpdate(
-      sessionId,
-      updates,
-      { new: true } // This returns the updated session instead of the old one
-    );
+    if (Object.keys(updates).length === 0) {
+      return res
+        .status(400)
+        .json({ error: "No valid fields provided to update" });
+    }
 
-    // Send back the updated session
+    // STEP 4: Perform update and return the new document
+    const updatedSession = await StudySession.findByIdAndUpdate(id, updates, {
+      new: true,
+      runValidators: true,
+    });
+
     res.status(200).json(updatedSession);
   } catch (error) {
     console.error("Error updating session:", error);
+    // Handle invalid ObjectId separately for clearer feedback
+    if (error.name === "CastError") {
+      return res.status(400).json({ error: "Invalid session id format" });
+    }
     res.status(500).json({ error: "Failed to update session" });
   }
 });
