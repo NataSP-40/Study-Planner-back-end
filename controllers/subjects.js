@@ -122,10 +122,7 @@ router.delete("/:subjectId", verifyToken, async (req, res) => {
       userId: req.user._id,
     });
 
-    return res.status(200).json({
-      message: "Subject and associated notes deleted successfully",
-      subject: deletedSubject,
-    });
+    return res.status(200).json(deletedSubject);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -214,6 +211,5 @@ router.delete("/:subjectId/notes/:noteId", verifyToken, async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-
 
 module.exports = router;
