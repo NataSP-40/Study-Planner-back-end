@@ -4,101 +4,56 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 
 const User = require("../models/user");
-const verifyToken = require("../middleware/verify-token");
 
-const saltRounds = 12; // match course examples using sync bcrypt
+const saltRounds = 12;
 
-function ensureJwtSecret() {
-  if (!process.env.JWT_SECRET) {
-    throw new Error("JWT_SECRET is not set in environment");
-  }
-}
-
-function signToken(payload) {
-  ensureJwtSecret();
-  // Keep payload shape exactly as taught: wrap as { payload } with no exp
-  return jwt.sign({ payload }, process.env.JWT_SECRET);
-}
-
-// Shared handler: Register a new user
-const registerHandler = async (req, res) => {
+router.post("/sign-up", async (req, res) => {
   try {
-    const { username, email, password, firstName, lastName } = req.body || {};
+    // check if user already taken - skip for now
+    const userInDatabase = await User.findOne({ username: req.body.username });
 
-    // Basic validation
-    if (!username || !email || !password) {
-      return res.status(400).json({ err: "username, email and password are required." });
-    }
-
-    // Check uniqueness for username and email
-    const existingByUsername = await User.findOne({ username });
-    if (existingByUsername) {
+    if (userInDatabase) {
       return res.status(409).json({ err: "Username already taken." });
     }
-    const existingByEmail = await User.findOne({ email });
-    if (existingByEmail) {
-      return res.status(409).json({ err: "Email already in use." });
-    }
-
-  // Use synchronous hashing per course material
-  const hashedPassword = bcrypt.hashSync(password, saltRounds);
-
+    console.log(req.body);
     const user = await User.create({
-      username,
-      email,
-      hashedPassword,
-      firstName,
-      lastName,
+      username: req.body.username,
+      email: req.body.email,
+      hashedPassword: bcrypt.hashSync(req.body.password, saltRounds),
+      firstName: req.body.firstName,
+      lastName: req.body.lastName,
     });
 
-  const token = signToken({ username: user.username, _id: user._id });
+    const payload = { username: user.username, _id: user._id };
 
-  // Keep response minimal as in course: only message and token
-  res.status(201).json({ message: "User created succesfully", token });
+    const token = jwt.sign({ payload }, process.env.JWT_SECRET);
+
+    res.status(201).json({ message: "User created succesfully", token });
   } catch (err) {
     res.status(500).json({ err: err.message });
   }
-};
+});
 
-// Shared handler: Login existing user
-const loginHandler = async (req, res) => {
+router.post("/login", async (req, res) => {
   try {
-  const { username, password } = req.body || {};
-    if (!username || !password) {
-      return res.status(400).json({ err: "username and password are required." });
-    }
-
-    const user = await User.findOne({ username });
+    const user = await User.findOne({ username: req.body.username });
     if (!user) {
       return res.status(401).json({ err: "Invalid credentials." });
     }
 
-  // Use synchronous compare per course material
-  const isPasswordCorrect = bcrypt.compareSync(password, user.hashedPassword);
+    const isPasswordCorrect = bcrypt.compareSync(
+      req.body.password,
+      user.hashedPassword
+    );
     if (!isPasswordCorrect) {
       return res.status(401).json({ err: "Invalid credentials." });
     }
 
-  const token = signToken({ username: user.username, _id: user._id });
+    const payload = { username: user.username, _id: user._id };
 
-  // Keep response minimal as in course
-  res.status(200).json({ message: "Login succesfully", token });
-  } catch (err) {
-    res.status(500).json({ err: err.message });
-  }
-};
+    const token = jwt.sign({ payload }, process.env.JWT_SECRET);
 
-// Best-practice route names, with backward compatible aliases
-// Primary routes per course, with best-practice aliases for flexibility
-router.post(["/sign-up", "/register"], registerHandler);
-router.post(["/sign-in", "/login"], loginHandler);
-
-// Convenience route to return the current authenticated user
-router.get("/me", verifyToken, async (req, res) => {
-  try {
-    const user = await User.findById(req.user._id);
-    if (!user) return res.status(404).json({ err: "User not found." });
-    res.status(200).json({ user });
+    res.status(200).json({ message: "Login succesfully", token });
   } catch (err) {
     res.status(500).json({ err: err.message });
   }

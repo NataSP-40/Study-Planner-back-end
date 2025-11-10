@@ -9,9 +9,9 @@ const router = express.Router();
 //  used to show sessions in the weekly calendar view
 router.get("/", verifyToken, async (req, res) => {
   try {
-    const from = req.query.from; // Start date
-    const to = req.query.to; // End date
-    const subjectId = req.query.subjectId; // Optional: filter by subject
+    // const from = req.query.from; // Start date
+    // const to = req.query.to; // End date
+    // const subjectId = req.query.subjectId; // Optional: filter by subject
 
     // Check if required dates are provided
     // if (!from || !to) {
@@ -36,7 +36,7 @@ router.get("/", verifyToken, async (req, res) => {
     // }
 
     // Find all matching sessions and sort them by date (earliest first)
-    const sessions = await StudySession.find({}).sort({
+    const sessions = await StudySession.find({ userId: req.user._id }).sort({
       date: 1,
       userId: 1,
       subjectId: 1,

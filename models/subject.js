@@ -8,7 +8,6 @@ const subjectSchema = new mongoose.Schema(
       required: true,
     },
     name: { type: String, required: true },
-    color: { type: String, default: "#FFD700" }, // optional UI color
     description: { type: String },
   },
   { timestamps: true }
