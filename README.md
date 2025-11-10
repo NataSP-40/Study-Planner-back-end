@@ -110,6 +110,7 @@ Study-Planner-back-end/
 │   ├── note.js
 │   ├── sessions.js
 │   ├── subjects.js
+|   ├── test-jwt.js
 │   └── users.js
 ├── middleware/          # Custom middleware (e.g., JWT verification)
 │   └── verify-token.js
