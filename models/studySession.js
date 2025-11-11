@@ -40,13 +40,5 @@ const studySessionSchema = new mongoose.Schema(
 
 studySessionSchema.index({ userId: 1, date: 1 });
 
-// studySessionSchema.set("toJSON", {
-//   transform: (document, returnedObject) => {
-//     returnedObject.id = returnedObject._id.toString();
-//     delete returnedObject._id;
-//     delete returnedObject.__v;
-//   },
-// });
-
 const StudySession = mongoose.model("StudySession", studySessionSchema);
 module.exports = StudySession;

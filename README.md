@@ -107,7 +107,7 @@ This backend is deployed on [Render](https://render.com/):
 Study-Planner-back-end/
 ├── controllers/         # Route controllers for all endpoints
 │   ├── auth.js
-│   ├── note.js
+│   ├── notes.js
 │   ├── sessions.js
 │   ├── subjects.js
 |   ├── test-jwt.js

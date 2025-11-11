@@ -9,13 +9,11 @@ const saltRounds = 12;
 
 router.post("/sign-up", async (req, res) => {
   try {
-    // check if user already taken - skip for now
     const userInDatabase = await User.findOne({ username: req.body.username });
 
     if (userInDatabase) {
       return res.status(409).json({ err: "Username already taken." });
     }
-    console.log(req.body);
     const user = await User.create({
       username: req.body.username,
       email: req.body.email,
