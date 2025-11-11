@@ -30,9 +30,9 @@ For more details and the front-end implementation, visit the [Study Planner Fron
 
 - **Node.js**
 - **Express.js**
-- **MongoDB** (with Mongoose ODM)
-- **JWT** for authentication
-- **Render** for deployment
+- **MongoDB**
+- **JWT**
+- **Render**
 
 ---
 
@@ -85,11 +85,8 @@ This backend is deployed on [Render](https://render.com/):
 
 ### Notes
 
-- `GET /api/notes` — Get all notes for the authenticated user
-- `POST /api/notes` — Create a new note
-- `GET /api/notes/:id` — Get a specific note
-- `PUT /api/notes/:id` — Update a note
-- `DELETE /api/notes/:id` — Delete a note
+`GET /api/notes` — Get all notes for the authenticated user
+`GET /api/notes/search?query=...` — Search notes by title for the authenticated user
 
 ### Study Sessions
 
