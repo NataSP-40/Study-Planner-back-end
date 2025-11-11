@@ -30,6 +30,7 @@ app.use("/subjects", subjectsRouter);
 app.use("/notes", notesRouter);
 app.use("/sessions", sessionsRouter);
 
-app.listen(3000, () => {
-  console.log("The espress app is ready!");
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
 });
